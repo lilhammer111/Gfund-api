@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+# import datetime
+from datetime import timedelta
 from pathlib import Path
 import sys
 
@@ -17,7 +19,7 @@ import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 追加系统的导包路径
-sys.path.insert(0, str(BASE_DIR / 'apps'))
+sys.path.append(str(BASE_DIR / 'apps'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -28,7 +30,7 @@ SECRET_KEY = 'django-insecure-_u%&-lwa7tg+(61@08=2r-lb*l*8$$es-lcw#!lwv#46l$pryu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.1.3', 'localhost', '127.0.0.1']
 
 # Application definition
 
@@ -40,8 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',  # 注册DRF
-    'corsheaders',
-    'users',
+    'corsheaders',  # 跨域
+    'users',  # 用户模块
+    'verifications',  # 短信验证模块
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -130,6 +134,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# 配置redis缓存
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -138,6 +143,7 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     },
+    # 缓存session
     'session': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': 'redis://127.0.0.1:6379/1',
@@ -145,14 +151,18 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     },
-    # 'verify_code': {
-    #     'BACKEND': 'django_redis.cache.RedisCache',
-    #     'LOCATION': 'redis://127.0.0.1:6379/2',
-    #     "OPTIONS": {
-    #         "CLIENT_CLASS": "django_redis.client.DefaultClient",
-    #     },
-    # },
+    # 缓存验证码
+    'verify_codes': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/2',
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    },
 }
+# 修改Django的Session机制使用redis保存，且使用名为'session'的redis配置。（非必须配置)
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "session"
 
 # 日志输出器
 BASE_LOG_DIR = Path(__file__).resolve().parent.parent.parent
@@ -201,9 +211,27 @@ LOGGING = {
 REST_FRAMEWORK = {
     # 异常处理
     'EXCEPTION_HANDLER': 'test_api.utils.exceptions.exception_handler',
+    # 'DEFAULT_AUTHENTICATION_CLASSES': (
+    #     # 基本认证
+    #     'rest_framework.authentication.BasicAuthentication',
+    #     # session认证
+    #     'rest_framework.authentication.SessionAuthentication',
+    # ),
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     'rest_framework.permissions.AllowAny',  # 允许所有人
+    # )
+    # JWT配置项
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
 }
 
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_HEADERS = '*'
+
+# 跨域时允许携带cookie
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -214,18 +242,88 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
+# CORS_ALLOW_HEADERS = [
+#     'accept',
+#     'accept-encoding',
+#     'authorization',
+#     'content-type',
+#     'dnt',
+#     'origin',
+#     'user-agent',
+#     'x-csrftoken',
+#     'x-requested-with',
+# ]
 
 # 修改Django认证系统的用户模型类
 AUTH_USER_MODEL = 'users.User'
+
+# jwt配置
+
+# SIMPLE_JWT = {
+#     'ACCESS_TOKEN_LIFETIME': timedelta(days=15),  # 访问令牌的有效时间
+#     # 'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # 刷新令牌的有效时间
+#     #
+#     # 'ROTATE_REFRESH_TOKENS': False,  # 若为True，则刷新后新的refresh_token有更新的有效时间
+#     # 'BLACKLIST_AFTER_ROTATION': True,  # 若为True，刷新后的token将添加到黑名单中,
+#     # # When True,'rest_framework_simplejwt.token_blacklist',should add to INSTALLED_APPS
+#     #
+#     # 'ALGORITHM': 'HS256',  # 对称算法：HS256 HS384 HS512  非对称算法：RSA
+#     # 'SIGNING_KEY': SECRET_KEY,
+#     # 'VERIFYING_KEY': None,  # if signing_key, verifying_key will be ignore.
+#     # 'AUDIENCE': None,
+#     # 'ISSUER': None,
+#     #
+#     # 'AUTH_HEADER_TYPES': ('Bearer',),  # Authorization: Bearer <token>
+#     # 'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # if HTTP_X_ACCESS_TOKEN, X_ACCESS_TOKEN: Bearer <token>
+#     # 'USER_ID_FIELD': 'id',  # 使用唯一不变的数据库字段,将包含在生成的令牌中以标识用户
+#     # 'USER_ID_CLAIM': 'user_id',
+#
+#     # 'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),   # default: access
+#     # 'TOKEN_TYPE_CLAIM': 'token_type',         # 用于存储令牌唯一标识符的声明名称 value:'access','sliding','refresh'
+#     #
+#     # 'JTI_CLAIM': 'jti',
+#     #
+#     # 'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',     # 滑动令牌是既包含到期声明又包含刷新到期声明的令牌
+#     # 'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),       # 只要滑动令牌的到期声明中的时间戳未通过，就可以用来证明身份验证
+#     # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),  # path('token|refresh', TokenObtainSlidingView.as_view())
+# }
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": False,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": "",
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "JSON_ENCODER": None,
+    "JWK_URL": None,
+    "LEEWAY": 0,
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+
+    "JTI_CLAIM": "jti",
+
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
+
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
+    "TOKEN_VERIFY_SERIALIZER": "rest_framework_simplejwt.serializers.TokenVerifySerializer",
+    "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.serializers.TokenBlacklistSerializer",
+    "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
+    "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
+}
