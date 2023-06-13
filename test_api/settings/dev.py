@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',  # 注册DRF
     'corsheaders',  # 跨域
     'users',  # 用户模块
+    'products',
     'verifications',  # 短信验证模块
     'rest_framework_simplejwt',
 ]
@@ -212,18 +213,33 @@ REST_FRAMEWORK = {
     # 异常处理
     'EXCEPTION_HANDLER': 'test_api.utils.exceptions.exception_handler',
     # 'DEFAULT_AUTHENTICATION_CLASSES': (
-    #     # 基本认证
-    #     'rest_framework.authentication.BasicAuthentication',
-    #     # session认证
-    #     'rest_framework.authentication.SessionAuthentication',
+        #  基本认证
+        #  'rest_framework.authentication.BasicAuthentication',
+        # session认证
     # ),
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.AllowAny',  # 允许所有人
-    # )
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     # JWT配置项
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+PERMISSIONS = {
+    'admin': {
+        'product-list': ['GET', 'POST'],
+        'product-detail': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    },
+    'manager': {
+        'product-list': ['GET', 'POST'],
+        'product-detail': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    },
+    'staff': {
+        'product-list': ['GET'],
+        'product-detail': ['GET']
+    },
 }
 
 # CORS_ALLOW_ALL_ORIGINS = True
@@ -242,58 +258,22 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# CORS_ALLOW_HEADERS = [
-#     'accept',
-#     'accept-encoding',
-#     'authorization',
-#     'content-type',
-#     'dnt',
-#     'origin',
-#     'user-agent',
-#     'x-csrftoken',
-#     'x-requested-with',
-# ]
-
 # 修改Django认证系统的用户模型类
 AUTH_USER_MODEL = 'users.User'
 
 # jwt配置
-
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(days=15),  # 访问令牌的有效时间
-#     # 'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # 刷新令牌的有效时间
-#     #
-#     # 'ROTATE_REFRESH_TOKENS': False,  # 若为True，则刷新后新的refresh_token有更新的有效时间
-#     # 'BLACKLIST_AFTER_ROTATION': True,  # 若为True，刷新后的token将添加到黑名单中,
-#     # # When True,'rest_framework_simplejwt.token_blacklist',should add to INSTALLED_APPS
-#     #
-#     # 'ALGORITHM': 'HS256',  # 对称算法：HS256 HS384 HS512  非对称算法：RSA
-#     # 'SIGNING_KEY': SECRET_KEY,
-#     # 'VERIFYING_KEY': None,  # if signing_key, verifying_key will be ignore.
-#     # 'AUDIENCE': None,
-#     # 'ISSUER': None,
-#     #
-#     # 'AUTH_HEADER_TYPES': ('Bearer',),  # Authorization: Bearer <token>
-#     # 'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # if HTTP_X_ACCESS_TOKEN, X_ACCESS_TOKEN: Bearer <token>
-#     # 'USER_ID_FIELD': 'id',  # 使用唯一不变的数据库字段,将包含在生成的令牌中以标识用户
-#     # 'USER_ID_CLAIM': 'user_id',
-#
-#     # 'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),   # default: access
-#     # 'TOKEN_TYPE_CLAIM': 'token_type',         # 用于存储令牌唯一标识符的声明名称 value:'access','sliding','refresh'
-#     #
-#     # 'JTI_CLAIM': 'jti',
-#     #
-#     # 'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',     # 滑动令牌是既包含到期声明又包含刷新到期声明的令牌
-#     # 'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),       # 只要滑动令牌的到期声明中的时间戳未通过，就可以用来证明身份验证
-#     # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),  # path('token|refresh', TokenObtainSlidingView.as_view())
-# }
-
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
+
+    # cookie配置
+    # 'AUTH_COOKIE': 'jwt_token',
+    # 'AUTH_COOKIE_HTTP_ONLY': True,
+    # 'AUTH_COOKIE_SAMESITE': 'Lax',
+    # 'AUTH_COOKIE_SECURE': not DEBUG,
 
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
@@ -306,6 +286,7 @@ SIMPLE_JWT = {
 
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # "AUTH_HEADER_NAME": "AUTHORIZATION",
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
     "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
